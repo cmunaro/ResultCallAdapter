@@ -30,8 +30,8 @@ kotlin {
                 implementation(kotlin("test"))
                 implementation("junit:junit:4.13.1")
                 implementation("com.google.truth:truth:1.1.3")
-
                 implementation("com.squareup.okhttp3:mockwebserver:4.9.3")
+                implementation("io.mockk:mockk:1.12.1")
             }
         }
         val jvmMain by getting {

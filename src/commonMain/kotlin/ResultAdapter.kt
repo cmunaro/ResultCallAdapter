@@ -28,7 +28,7 @@ class ResultAdapterFactory private constructor() : CallAdapter.Factory() {
     }
 }
 
-internal class ResultAdapter<R>(private val responseType: Type) :
+class ResultAdapter<R>(private val responseType: Type) :
     CallAdapter<R, Call<Result<R>>> {
     override fun responseType(): Type = responseType
 
@@ -63,7 +63,7 @@ internal class ResultAdapter<R>(private val responseType: Type) :
             throw UnsupportedOperationException("ResultCall doesn't support execute")
         }
 
-        override fun clone(): Call<Result<R>> = clone()
+        override fun clone(): Call<Result<R>> = ResultCall(call.clone())
 
         override fun isExecuted() = call.isExecuted
 
