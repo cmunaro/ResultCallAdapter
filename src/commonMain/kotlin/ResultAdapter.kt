@@ -11,9 +11,9 @@ class ResultAdapterFactory private constructor() : CallAdapter.Factory() {
         annotations: Array<out Annotation>?,
         retrofit: Retrofit?
     ): CallAdapter<*, *>? {
-        if (returnType !is ParameterizedType) return null
-        val completeType = returnType.actualTypeArguments
-            .firstOrNull() as? ParameterizedType
+        val completeType = (returnType as? ParameterizedType)
+            ?.actualTypeArguments
+            ?.firstOrNull() as? ParameterizedType
             ?: return null
         if (completeType.rawType != Result::class.java) return null
         val responseType = completeType.actualTypeArguments
@@ -28,7 +28,7 @@ class ResultAdapterFactory private constructor() : CallAdapter.Factory() {
     }
 }
 
-class ResultAdapter<R>(private val responseType: Type) :
+internal class ResultAdapter<R>(private val responseType: Type) :
     CallAdapter<R, Call<Result<R>>> {
     override fun responseType(): Type = responseType
 
