@@ -5,20 +5,21 @@ import io.mockk.mockk
 import io.mockk.verify
 import network.ResultAdapter
 import network.ResultAdapterFactory
+import okhttp3.MediaType
 import okhttp3.Request
-import okhttp3.mockwebserver.MockWebServer
+import okhttp3.ResponseBody
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.HttpException
+import retrofit2.Response
 import java.lang.reflect.WildcardType
 
 class ResultAdapterTest {
-    @get:Rule
-    val server: MockWebServer = MockWebServer()
-
     private val bodyClassString =
         object : TypeToken<Call<Result<String>>>() {}.type
+
     @Suppress("UNCHECKED_CAST")
     private val callAdapter = ResultAdapterFactory.create()
         .get(bodyClassString, null, null) as ResultAdapter<String>
@@ -26,17 +27,20 @@ class ResultAdapterTest {
         .url("http://stub")
         .build()
     private lateinit var resultCall: Call<Result<String>>
-    private val call = mockk<Call<String>>()
+    private val originalCall = mockk<Call<String>>()
+    private val callbackResult = mockk<Callback<Result<String>>>()
 
     @Before
     fun setUp() {
-        every { call.clone() } returns mockk<Call<String>>()
-        every { call.isExecuted } returns true
-        every { call.cancel() } returns Unit
-        every { call.isCanceled } returns true
-        every { call.request() } returns stubRequest
+        every { originalCall.clone() } returns mockk<Call<String>>()
+        every { originalCall.isExecuted } returns true
+        every { originalCall.cancel() } returns Unit
+        every { originalCall.isCanceled } returns true
+        every { originalCall.request() } returns stubRequest
+        every { callbackResult.onResponse(any(), any()) } returns Unit
+        every { callbackResult.onFailure(any(), any()) } returns Unit
 
-        resultCall = callAdapter.adapt(call)
+        resultCall = callAdapter.adapt(originalCall)
     }
 
     @Test
@@ -59,7 +63,7 @@ class ResultAdapterTest {
         val newInstance = resultCall.clone()
 
         assertThat(newInstance).isNotSameInstanceAs(resultCall)
-        verify { call.clone() }
+        verify { originalCall.clone() }
     }
 
     @Test
@@ -67,14 +71,14 @@ class ResultAdapterTest {
         val result = resultCall.isExecuted
 
         assertThat(result).isTrue()
-        verify { call.isExecuted }
+        verify { originalCall.isExecuted }
     }
 
     @Test
     fun `whenever call cancel then call cancel in the Call`() {
         resultCall.cancel()
 
-        verify { call.cancel() }
+        verify { originalCall.cancel() }
     }
 
     @Test
@@ -82,7 +86,7 @@ class ResultAdapterTest {
         val result = resultCall.isCanceled
 
         assertThat(result).isTrue()
-        verify { call.isCanceled }
+        verify { originalCall.isCanceled }
     }
 
     @Test
@@ -90,6 +94,99 @@ class ResultAdapterTest {
         val result = resultCall.request()
 
         assertThat(result).isSameInstanceAs(stubRequest)
-        verify { call.request() }
+        verify { originalCall.request() }
+    }
+
+    @Test
+    fun `whenever get a valid response return it in a Result Success`() {
+        every { originalCall.enqueue(any()) } answers {
+            firstArg<Callback<String>>().onResponse(
+                originalCall,
+                Response.success("hello world")
+            )
+        }
+
+        resultCall.enqueue(callbackResult)
+
+        verify {
+            callbackResult.onResponse(
+                any(),
+                withArg<Response<Result<String>>> {
+                    assertThat(it.body()?.isFailure).isFalse()
+                    assertThat(it.body()).isEqualTo(Result.success("hello world"))
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `whenever get a null response return it in a Result Failure`() {
+        every { originalCall.enqueue(any()) } answers {
+            firstArg<Callback<String>>().onResponse(
+                originalCall,
+                Response.success(null)
+            )
+        }
+
+        resultCall.enqueue(callbackResult)
+
+        verify {
+            callbackResult.onResponse(
+                any(),
+                withArg<Response<Result<String>>> {
+                    assertThat(it.body()?.isFailure).isTrue()
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `whenever get a unsuccessful response return it in a Result Failure`() {
+        val responseBody = mockk<ResponseBody>()
+        val mediaType = mockk<MediaType>()
+        every { responseBody.contentType() } returns mediaType
+        every { responseBody.contentLength() } returns 0
+        every { originalCall.enqueue(any()) } answers {
+            firstArg<Callback<String>>().onResponse(
+                originalCall,
+                Response.error(404, responseBody)
+            )
+        }
+
+        resultCall.enqueue(callbackResult)
+
+        verify {
+            callbackResult.onResponse(
+                any(),
+                withArg<Response<Result<String>>> {
+                    assertThat(it.body()?.isFailure).isTrue()
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `whenever get a failure return it in a Result Failure`() {
+        val responseBody = mockk<ResponseBody>()
+        val mediaType = mockk<MediaType>()
+        every { responseBody.contentType() } returns mediaType
+        every { responseBody.contentLength() } returns 0
+        every { originalCall.enqueue(any()) } answers {
+            firstArg<Callback<String>>().onFailure(
+                originalCall,
+                HttpException(Response.error<String>(500, responseBody))
+            )
+        }
+
+        resultCall.enqueue(callbackResult)
+
+        verify {
+            callbackResult.onResponse(
+                any(),
+                withArg<Response<Result<String>>> {
+                    assertThat(it.body()?.isFailure).isTrue()
+                }
+            )
+        }
     }
 }
