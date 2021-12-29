@@ -2,7 +2,7 @@ plugins {
     kotlin("multiplatform") version "1.6.10"
 }
 
-group = "io.github.munez07"
+group = "io.github.munez07.resultcalladapter"
 version = "1.0.0"
 
 repositories {
