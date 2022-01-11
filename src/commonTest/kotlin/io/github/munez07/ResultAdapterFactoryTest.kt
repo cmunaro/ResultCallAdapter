@@ -1,7 +1,8 @@
+package io.github.munez07
+
 import com.google.common.truth.Truth.assertThat
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import network.ResultAdapterFactory
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Before
 import org.junit.Rule

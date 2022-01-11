@@ -1,4 +1,4 @@
-package network
+package io.github.munez07
 
 import okhttp3.Request
 import retrofit2.*

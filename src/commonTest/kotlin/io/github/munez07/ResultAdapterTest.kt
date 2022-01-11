@@ -1,10 +1,10 @@
+package io.github.munez07
+
 import com.google.common.truth.Truth.assertThat
 import com.google.gson.reflect.TypeToken
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import network.ResultAdapter
-import network.ResultAdapterFactory
 import okhttp3.MediaType
 import okhttp3.Request
 import okhttp3.ResponseBody
